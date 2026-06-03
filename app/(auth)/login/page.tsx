@@ -2,13 +2,17 @@
 
 import { useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
+import GoogleButton from '@/components/GoogleButton'
+import { Suspense } from 'react'
 
-export default function LoginPage() {
+function LoginForm() {
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
   const router = useRouter()
+  const searchParams = useSearchParams()
+  const oauthError = searchParams.get('error') === 'oauth'
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
@@ -45,6 +49,26 @@ export default function LoginPage() {
           <p className="text-sm text-gray-500 mt-1">Entre na sua conta</p>
         </div>
 
+        {oauthError && (
+          <p className="text-sm text-red-600 text-center">
+            Erro ao autenticar com Google. Tente novamente.
+          </p>
+        )}
+
+        {/* Google OAuth */}
+        <GoogleButton label="Entrar com Google" />
+
+        {/* Divisor */}
+        <div className="relative">
+          <div className="absolute inset-0 flex items-center">
+            <div className="w-full border-t border-gray-100" />
+          </div>
+          <div className="relative flex justify-center text-xs">
+            <span className="bg-white px-3 text-gray-400">ou entre com e-mail</span>
+          </div>
+        </div>
+
+        {/* Formulário e-mail/senha */}
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
             <label className="block text-sm font-medium text-[#1f2330] mb-1" htmlFor="email">
@@ -86,10 +110,7 @@ export default function LoginPage() {
         </form>
 
         <div className="text-center text-sm space-y-2">
-          <Link
-            href="/reset-password"
-            className="block text-gray-500 hover:text-[#e74c3c] transition"
-          >
+          <Link href="/reset-password" className="block text-gray-500 hover:text-[#e74c3c] transition">
             Esqueceu a senha?
           </Link>
           <p className="text-gray-500">
@@ -101,5 +122,13 @@ export default function LoginPage() {
         </div>
       </div>
     </div>
+  )
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense>
+      <LoginForm />
+    </Suspense>
   )
 }

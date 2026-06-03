@@ -4,6 +4,7 @@ import { NextResponse, type NextRequest } from 'next/server'
 
 const AUTH_ROUTES = ['/login', '/signup', '/reset-password', '/update-password']
 const PROTECTED_PREFIXES = ['/timer', '/dashboard', '/history']
+const PUBLIC_ROUTES = ['/auth/callback']  // OAuth callback — nunca redirecionar
 
 export async function middleware(request: NextRequest) {
   let supabaseResponse = NextResponse.next({ request })
@@ -29,6 +30,9 @@ export async function middleware(request: NextRequest) {
 
   const { data: { user } } = await supabase.auth.getUser()
   const path = request.nextUrl.pathname
+
+  // Rotas públicas passam sem verificação (ex: callback OAuth)
+  if (PUBLIC_ROUTES.some(r => path.startsWith(r))) return supabaseResponse
 
   const isAuthRoute = AUTH_ROUTES.some(r => path.startsWith(r))
   const isProtected = PROTECTED_PREFIXES.some(r => path.startsWith(r)) || path === '/'

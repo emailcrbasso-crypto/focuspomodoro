@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
+import GoogleButton from '@/components/GoogleButton'
 
 export default function SignupPage() {
   const [error, setError] = useState<string | null>(null)
@@ -34,14 +35,12 @@ export default function SignupPage() {
       return
     }
 
-    // Sessão aberta imediatamente (confirmação de e-mail desativada no Supabase)
     if (data.session) {
       router.push('/timer')
       router.refresh()
       return
     }
 
-    // Confirmação de e-mail necessária
     setConfirmEmail(email)
     setLoading(false)
   }
@@ -56,7 +55,6 @@ export default function SignupPage() {
             <p className="text-sm text-gray-500 mt-2">
               Enviamos um link de confirmação para{' '}
               <span className="font-medium text-[#1f2330]">{confirmEmail}</span>.
-              Clique no link para ativar sua conta.
             </p>
           </div>
           <Link href="/login" className="block text-sm font-medium text-[#e74c3c] hover:underline">
@@ -73,6 +71,19 @@ export default function SignupPage() {
         <div className="text-center">
           <h1 className="text-2xl font-bold text-[#1f2330]">Focus Pomodoro</h1>
           <p className="text-sm text-gray-500 mt-1">Crie sua conta</p>
+        </div>
+
+        {/* Google OAuth */}
+        <GoogleButton label="Cadastrar com Google" />
+
+        {/* Divisor */}
+        <div className="relative">
+          <div className="absolute inset-0 flex items-center">
+            <div className="w-full border-t border-gray-100" />
+          </div>
+          <div className="relative flex justify-center text-xs">
+            <span className="bg-white px-3 text-gray-400">ou cadastre com e-mail</span>
+          </div>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
