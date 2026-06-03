@@ -5,6 +5,7 @@ import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import GoogleButton from '@/components/GoogleButton'
+import LogoMark from '@/components/LogoMark'
 
 export default function SignupPage() {
   const [error, setError] = useState<string | null>(null)
@@ -69,6 +70,9 @@ export default function SignupPage() {
     <div className="min-h-screen bg-[#f5f5f7] flex items-center justify-center p-4">
       <div className="w-full max-w-sm bg-white rounded-2xl shadow-lg p-8 space-y-6">
         <div className="text-center">
+          <div className="flex justify-center mb-3">
+            <LogoMark size={72} />
+          </div>
           <h1 className="text-2xl font-bold text-[#1f2330]">Focus Pomodoro</h1>
           <p className="text-sm text-gray-500 mt-1">Crie sua conta</p>
         </div>
