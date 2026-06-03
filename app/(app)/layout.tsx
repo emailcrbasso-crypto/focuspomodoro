@@ -2,6 +2,7 @@ import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import LogoutButton from '@/components/LogoutButton'
+import InstallPrompt from '@/components/InstallPrompt'
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const supabase = await createClient()
@@ -50,6 +51,8 @@ export default async function AppLayout({ children }: { children: React.ReactNod
       <main className="max-w-5xl mx-auto px-4 py-6">
         {children}
       </main>
+
+      <InstallPrompt />
     </div>
   )
 }
