@@ -5,12 +5,6 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 export type TimerMode = 'focus' | 'short_break' | 'long_break'
 export type TimerState = 'idle' | 'running' | 'paused' | 'completed'
 
-export const DURATIONS: Record<TimerMode, number> = {
-  focus: 25 * 60,
-  short_break: 5 * 60,
-  long_break: 15 * 60,
-}
-
 export const MODE_LABELS: Record<TimerMode, string> = {
   focus: 'Foco',
   short_break: 'Pausa curta',
@@ -19,61 +13,81 @@ export const MODE_LABELS: Record<TimerMode, string> = {
 
 interface UseTimerOptions {
   onFocusComplete?: () => void
+  focusMinutes?: number
+  shortBreakMinutes?: number
+  longBreakMinutes?: number
 }
 
-export function useTimer({ onFocusComplete }: UseTimerOptions = {}) {
-  const [mode, setMode]           = useState<TimerMode>('focus')
+export function useTimer({
+  onFocusComplete,
+  focusMinutes = 25,
+  shortBreakMinutes = 5,
+  longBreakMinutes = 15,
+}: UseTimerOptions = {}) {
+  const [mode, setMode]             = useState<TimerMode>('focus')
   const [timerState, setTimerState] = useState<TimerState>('idle')
-  const [secondsLeft, setSecondsLeft] = useState(DURATIONS.focus)
+  const [secondsLeft, setSecondsLeft] = useState(focusMinutes * 60)
   const [focusCount, setFocusCount] = useState(0)
 
-  // ── wall-clock refs ────────────────────────────────────────────────────────
-  // Guardam o instante em que o timer começou/retomou e os segundos que havia
-  // naquele momento. O cálculo de tempo sempre usa Date.now(), então o browser
-  // throttling do setInterval não afeta a precisão.
-  const startTimeRef      = useRef<number | null>(null)
-  const secondsAtStartRef = useRef(DURATIONS.focus)
-
-  const modeRef            = useRef<TimerMode>('focus')
-  const focusCountRef      = useRef(0)
-  const completedRef       = useRef(false)
-  const onFocusCompleteRef = useRef(onFocusComplete)
+  const durationsRef = useRef({
+    focus:       focusMinutes * 60,
+    short_break: shortBreakMinutes * 60,
+    long_break:  longBreakMinutes * 60,
+  })
+  const startTimeRef        = useRef<number | null>(null)
+  const secondsAtStartRef   = useRef(focusMinutes * 60)
+  const modeRef             = useRef<TimerMode>('focus')
+  const timerStateRef       = useRef<TimerState>('idle')
+  const focusCountRef       = useRef(0)
+  const completedRef        = useRef(false)
+  const onFocusCompleteRef  = useRef(onFocusComplete)
 
   useEffect(() => { modeRef.current = mode }, [mode])
+  useEffect(() => { timerStateRef.current = timerState }, [timerState])
   useEffect(() => { focusCountRef.current = focusCount }, [focusCount])
   useEffect(() => { onFocusCompleteRef.current = onFocusComplete }, [onFocusComplete])
 
-  // ── função de tick baseada em wall clock ───────────────────────────────────
+  // Atualiza durações quando as props mudam
+  useEffect(() => {
+    durationsRef.current = {
+      focus:       focusMinutes * 60,
+      short_break: shortBreakMinutes * 60,
+      long_break:  longBreakMinutes * 60,
+    }
+    // Se idle, atualiza o display imediatamente
+    if (timerStateRef.current === 'idle') {
+      const newSecs = durationsRef.current[modeRef.current]
+      secondsAtStartRef.current = newSecs
+      setSecondsLeft(newSecs)
+    }
+  }, [focusMinutes, shortBreakMinutes, longBreakMinutes])
+
+  // ── Countdown via wall clock ───────────────────────────────────────────────
   const tick = useCallback(() => {
     if (!startTimeRef.current) return
-    const elapsed    = Math.floor((Date.now() - startTimeRef.current) / 1000)
-    const remaining  = Math.max(0, secondsAtStartRef.current - elapsed)
+    const elapsed   = Math.floor((Date.now() - startTimeRef.current) / 1000)
+    const remaining = Math.max(0, secondsAtStartRef.current - elapsed)
     setSecondsLeft(remaining)
   }, [])
 
-  // ── interval de 500ms para display fluido ─────────────────────────────────
   useEffect(() => {
     if (timerState !== 'running') return
-    tick() // atualiza imediatamente ao iniciar/retomar
+    tick()
     const id = setInterval(tick, 500)
     return () => clearInterval(id)
   }, [timerState, tick])
 
-  // ── força atualização ao voltar para a aba ────────────────────────────────
   useEffect(() => {
     if (timerState !== 'running') return
-    const onVisible = () => {
-      if (document.visibilityState === 'visible') tick()
-    }
+    const onVisible = () => { if (document.visibilityState === 'visible') tick() }
     document.addEventListener('visibilitychange', onVisible)
     return () => document.removeEventListener('visibilitychange', onVisible)
   }, [timerState, tick])
 
-  // ── handle de conclusão ───────────────────────────────────────────────────
+  // ── Handle zero ───────────────────────────────────────────────────────────
   useEffect(() => {
     if (secondsLeft !== 0 || timerState !== 'running' || completedRef.current) return
     completedRef.current = true
-
     setTimerState('completed')
 
     if (modeRef.current === 'focus') {
@@ -86,7 +100,7 @@ export function useTimer({ onFocusComplete }: UseTimerOptions = {}) {
       setTimeout(() => {
         completedRef.current  = false
         startTimeRef.current  = null
-        const dur = DURATIONS[nextMode]
+        const dur = durationsRef.current[nextMode]
         secondsAtStartRef.current = dur
         setMode(nextMode)
         modeRef.current = nextMode
@@ -97,7 +111,7 @@ export function useTimer({ onFocusComplete }: UseTimerOptions = {}) {
       setTimeout(() => {
         completedRef.current  = false
         startTimeRef.current  = null
-        const dur = DURATIONS.focus
+        const dur = durationsRef.current.focus
         secondsAtStartRef.current = dur
         setMode('focus')
         modeRef.current = 'focus'
@@ -107,7 +121,7 @@ export function useTimer({ onFocusComplete }: UseTimerOptions = {}) {
     }
   }, [secondsLeft, timerState])
 
-  // ── controles ─────────────────────────────────────────────────────────────
+  // ── Controles ─────────────────────────────────────────────────────────────
   const start = useCallback(() => {
     startTimeRef.current      = Date.now()
     secondsAtStartRef.current = secondsLeft
@@ -128,7 +142,7 @@ export function useTimer({ onFocusComplete }: UseTimerOptions = {}) {
   const reset = useCallback(() => {
     completedRef.current      = false
     startTimeRef.current      = null
-    const dur = DURATIONS[modeRef.current]
+    const dur = durationsRef.current[modeRef.current]
     secondsAtStartRef.current = dur
     setTimerState('idle')
     setSecondsLeft(dur)
@@ -137,7 +151,7 @@ export function useTimer({ onFocusComplete }: UseTimerOptions = {}) {
   const switchMode = useCallback((newMode: TimerMode) => {
     completedRef.current      = false
     startTimeRef.current      = null
-    const dur = DURATIONS[newMode]
+    const dur = durationsRef.current[newMode]
     secondsAtStartRef.current = dur
     setMode(newMode)
     modeRef.current = newMode
@@ -145,24 +159,14 @@ export function useTimer({ onFocusComplete }: UseTimerOptions = {}) {
     setTimerState('idle')
   }, [])
 
-  // ── valores derivados ─────────────────────────────────────────────────────
-  const minutes = Math.floor(secondsLeft / 60)
-  const seconds = secondsLeft % 60
-  const display = `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`
+  const minutes      = Math.floor(secondsLeft / 60)
+  const seconds      = secondsLeft % 60
+  const display      = `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`
   const cyclePosition = focusCount % 4
 
   return {
-    mode,
-    timerState,
-    display,
-    secondsLeft,
-    focusCount,
-    cyclePosition,
-    modeLabel: MODE_LABELS[mode],
-    start,
-    pause,
-    resume,
-    reset,
-    switchMode,
+    mode, timerState, display, secondsLeft,
+    focusCount, cyclePosition, modeLabel: MODE_LABELS[mode],
+    start, pause, resume, reset, switchMode,
   }
 }

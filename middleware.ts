@@ -3,7 +3,7 @@ import type { ResponseCookie } from 'next/dist/compiled/@edge-runtime/cookies'
 import { NextResponse, type NextRequest } from 'next/server'
 
 const AUTH_ROUTES = ['/login', '/signup', '/reset-password', '/update-password']
-const PROTECTED_PREFIXES = ['/timer', '/dashboard', '/history']
+const PROTECTED_PREFIXES = ['/timer', '/dashboard', '/history', '/achievements', '/settings']
 const PUBLIC_ROUTES = ['/auth/callback']  // OAuth callback — nunca redirecionar
 
 export async function middleware(request: NextRequest) {
